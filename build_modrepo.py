@@ -257,7 +257,9 @@ def main():
                 if mm:
                     entries.append(mm)
             except Exception as e:
-                print(f"Error handling asset {asset.get('name')} in release {tag}: {e}")
+                print(
+                    f"Skipping asset {asset.get('name')} in release {tag} due to error: {e}"
+                )
 
     # write modrepo.xml
     modrepo = ET.Element("ModRepo")
