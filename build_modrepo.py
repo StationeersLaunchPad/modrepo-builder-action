@@ -245,11 +245,13 @@ def main(repos):
     if "GITHUB_REPOSITORY" in os.environ:
         repos = [os.environ["GITHUB_REPOSITORY"].strip()]
 
-    if "_MODREPO_BUILDER_REPOS" in os.environ:
-        repos = [repo.strip() for repo in os.environ["_MODREPO_BUILDER_REPOS"].split()]
+    env_repos = os.environ.get("_MODREPO_BUILDER_REPOS", "").split()
+    if env_repos:
+        repos = [repo.strip() for repo in env_repos]
 
     if not repos:
         print("No repos specified")
+        sys.exit(1)
         return
 
     cache_file = Path("modrepo_cache.json")
