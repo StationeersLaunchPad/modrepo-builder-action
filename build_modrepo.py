@@ -264,7 +264,7 @@ def main():
     # write modrepo.xml
     modrepo = ET.Element("ModRepo")
 
-    entries.sort(key=lambda t: (t.id, t.version_parsed, t.branch))
+    entries.sort(key=lambda t: (t.id, t.version_parsed, t.branch), reverse=True)
 
     for mm in entries:
         mv = ET.SubElement(modrepo, "ModVersion")
