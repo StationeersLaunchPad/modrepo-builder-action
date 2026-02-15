@@ -5,6 +5,17 @@ inputs:
   commit-message:
     required: false
     default: "Update modrepo.xml"
+    description: The commit message to use when pushing the modrepo.xml file to the modrepo branch.
+
+  mod-repos:
+    required: false
+    default: ""
+    description: |
+        List of github repositories to scan for stationeers mods in its releases. By default it will look at the current repository.
+        # example input
+        some_user/FancyStationeersMod
+        some_user/AnotherFancyStationeersMod
+        TheStationeersModdingOrganization/MegaFancyStationeersMod
 
 runs:
   using: composite
@@ -25,6 +36,7 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
+        _MODREPO_BUILDER_REPOS: ${{ inputs.mod-repos }}
       run: |
         set -euo pipefail
         git config user.name  "github-actions[bot]"

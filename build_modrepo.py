@@ -3,12 +3,17 @@ import json
 import os
 import re
 import subprocess
+import sys
 import xml.etree.ElementTree as ET
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
 import requests
+
+
+class ModError(Exception):
+    pass
 
 
 @dataclass
@@ -38,7 +43,7 @@ class ModMetadata:
         def get_field(name) -> str:
             el = elem.findtext(name)
             if el is None:
-                raise ValueError(f"Missing required <{name}> in About.xml")
+                raise ModError(f"Missing required <{name}> in About.xml")
             return el.strip()
 
         data = ModMetadata.read_data(elem)
@@ -155,18 +160,25 @@ def parse_version(s):
     return sections
 
 
-def get_release_data() -> list:
-    owner, repo = os.environ["GITHUB_REPOSITORY"].strip().split("/", 1)
-    return (
-        github(
-            [
-                "api",
-                f"/repos/{owner}/{repo}/releases",
-                "--paginate",
-            ]
-        )
-        or []
-    )
+def get_release_data(repos) -> list:
+    data = []
+    for repo in repos:
+        print(f"Fetching releases for {repo}...")
+        if "GITHUB_TOKEN" in os.environ:
+            data.extend(
+                github(
+                    [
+                        "api",
+                        f"/repos/{repo}/releases",
+                        "--paginate",
+                    ]
+                )
+                or []
+            )
+        else:
+            url = f"https://api.github.com/repos/{repo}/releases"
+            data.extend(requests.get(url).json())
+    return data
 
 
 def handle_asset(asset: dict, cache: dict, all_zip_digests: set) -> ModMetadata | None:
@@ -187,11 +199,12 @@ def handle_asset(asset: dict, cache: dict, all_zip_digests: set) -> ModMetadata 
     if digest in cache:
         metadata = cache[digest]
         if not metadata:
+            print("\t(cached info): No mod metadata found for this asset")
             return
 
         mm = ModMetadata(**metadata)
         print(
-            f"\tfound mod in cache: id={mm.id}, name={mm.name}, version={mm.version}, branch={mm.branch}"
+            f"\tFound mod in cache: id={mm.id}, name={mm.name}, version={mm.version}, branch={mm.branch}"
         )
         return mm
 
@@ -200,40 +213,51 @@ def handle_asset(asset: dict, cache: dict, all_zip_digests: set) -> ModMetadata 
     outdir.mkdir(parents=True, exist_ok=True)
 
     zip_path = outdir / name
-    with requests.get(url, stream=True, timeout=10) as r:
-        r.raise_for_status()
-        with zip_path.open("wb") as f:
-            for chunk in r.iter_content(chunk_size=1024 * 1024):
-                if chunk:
-                    f.write(chunk)
+    if not zip_path.exists() or sha256(zip_path) != digest:
+        with requests.get(url, stream=True, timeout=10) as r:
+            r.raise_for_status()
+            with zip_path.open("wb") as f:
+                for chunk in r.iter_content(chunk_size=1024 * 1024):
+                    if chunk:
+                        f.write(chunk)
 
     about_xml = read_about_xml_from_zip(zip_path)
     if not about_xml:
         cache[digest] = False
         return
 
-    mm = ModMetadata.from_about_xml(about_xml, url, digest)
+    try:
+        mm = ModMetadata.from_about_xml(about_xml, url, digest)
+    except ModError as e:
+        cache[digest] = False
+        print(f"Error parsing About.xml: {e}")
+        return
     mm.digest = sha256(zip_path)
     mm.url = url
     print(
-        f"\tfound mod id={mm.id}, name={mm.name}, version={mm.version}, branch={mm.branch}"
+        f"\tFound new mod id={mm.id}, name={mm.name}, version={mm.version}, branch={mm.branch}"
     )
     cache[digest] = dict(mm.__dict__)
     return mm
 
 
-def main():
-    # This runs during a GitHub Action workflow. Ensure GH CLI auth via:
-    #   env: GH_TOKEN: ${{ github.token }}
+def main(repos):
+    if "GITHUB_REPOSITORY" in os.environ:
+        repos = [os.environ["GITHUB_REPOSITORY"].strip()]
+
+    if "_MODREPO_BUILDER_REPOS" in os.environ:
+        repos = [repo.strip() for repo in os.environ["_MODREPO_BUILDER_REPOS"].split()]
+
+    if not repos:
+        print("No repos specified")
+        return
 
     cache_file = Path("modrepo_cache.json")
     cache = json.loads(cache_file.read_text()) if cache_file.exists() else {}
-
     print("Cache entries:", len(cache))
 
-    releases = get_release_data()
-
-    print(f"Loaded {len(releases)} new releases")
+    releases = get_release_data(repos)
+    print(f"Loaded {len(releases)} releases")
 
     entries: list[ModMetadata] = []
 
@@ -245,10 +269,10 @@ def main():
         has_zip = any(((a.get("name") or "").lower().endswith(".zip")) for a in assets)
 
         if not has_zip:
-            print(f"Skipping release {tag} as it has no zip file")
+            print(f"Skipping release {tag} because it contains no .zip assets")
             continue
 
-        print("handling release:", tag)
+        print("Handling release:", tag)
 
         assets = rel.get("assets") or []
         for asset in assets:
@@ -294,4 +318,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
