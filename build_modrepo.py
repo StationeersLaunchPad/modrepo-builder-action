@@ -42,11 +42,8 @@ class ModMetadata:
             return el.strip()
 
         data = ModMetadata.read_data(elem)
-        id = elem.findtext("ModID") or elem.findtext("WorkshopHandle")
-        if id is None:
-            raise ValueError("Missing required ModID or WorkshopHandle")
         return ModMetadata(
-            id=id.strip(),
+            id=get_field("ModID"),
             version=get_field("Version"),
             name=get_field("Name"),
             author=get_field("Author"),
