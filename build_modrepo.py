@@ -267,6 +267,8 @@ def main(repos):
         sys.exit(1)
         return
 
+    repos = [repo.strip('"') for repo in repos]
+
     cache_file = Path("modrepo_cache.json")
     cache = json.loads(cache_file.read_text()) if cache_file.exists() else {}
     print("Cache entries:", len(cache))
