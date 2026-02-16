@@ -11,6 +11,13 @@ from pathlib import Path
 
 import requests
 
+_debug_output = os.environ.get("_MODREPO_BUILDER_DEBUG", "false").lower() == "true"
+
+
+def dprint(*args, **kwargs):
+    if _debug_output:
+        print(*args, **kwargs)
+
 
 class ModError(Exception):
     pass
@@ -164,7 +171,7 @@ def get_release_data(repos) -> list:
     data = []
     for repo in repos:
         print(f"Fetching releases for {repo}...")
-        if "GITHUB_TOKEN" in os.environ:
+        if "GH_TOKEN" in os.environ:
             data.extend(
                 github(
                     [
@@ -177,7 +184,11 @@ def get_release_data(repos) -> list:
             )
         else:
             url = f"https://api.github.com/repos/{repo}/releases"
-            data.extend(requests.get(url).json())
+            result = requests.get(url)
+            result.raise_for_status()
+            data.extend(result.json())
+        dprint(f"Fetched {len(data)} releases for {repo}", type(data))
+        dprint(data)
     return data
 
 
@@ -193,6 +204,7 @@ def handle_asset(asset: dict, cache: dict, all_zip_digests: set) -> ModMetadata 
     digest = asset.get("digest")
 
     if not digest:
+        dprint(f"Asset {name} has no digest")
         return
 
     all_zip_digests.add(digest)
@@ -223,6 +235,7 @@ def handle_asset(asset: dict, cache: dict, all_zip_digests: set) -> ModMetadata 
 
     about_xml = read_about_xml_from_zip(zip_path)
     if not about_xml:
+        dprint(f"Asset {name} has no About.xml")
         cache[digest] = False
         return
 
@@ -266,6 +279,7 @@ def main(repos):
     all_zip_digests = set()
 
     for rel in releases:
+        dprint(f"Handling release, type {type(rel)}, {rel}")
         tag = rel.get("tag_name")
         assets = rel.get("assets") or []
         has_zip = any(((a.get("name") or "").lower().endswith(".zip")) for a in assets)
@@ -281,6 +295,7 @@ def main(repos):
             try:
                 mm = handle_asset(asset, cache, all_zip_digests)
                 if mm:
+                    dprint(f"Adding mod metadata {mm}")
                     entries.append(mm)
             except Exception as e:
                 print(
@@ -315,6 +330,7 @@ def main(repos):
     # remove cache entries for zip files no longer present
     removed_digests = set(cache.keys()) - all_zip_digests
     for digest in removed_digests:
+        dprint(f"Removing cache entry for digest {digest}")
         del cache[digest]
     cache_file.write_text(json.dumps(cache, indent=4, sort_keys=True), encoding="utf-8")
 

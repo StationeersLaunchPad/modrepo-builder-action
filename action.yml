@@ -2,6 +2,11 @@ name: Build modrepo.xml and push to modrepo branch
 description: Generates modrepo.xml in repo root and commits it to modrepo branch.
 
 inputs:
+  debug-output:
+    required: false
+    default: "false"
+    description: Verbose output for debugging, set to "true" to enable
+
   commit-message:
     required: false
     default: "Update modrepo.xml"
@@ -37,6 +42,7 @@ runs:
       env:
         GH_TOKEN: ${{ github.token }}
         _MODREPO_BUILDER_REPOS: ${{ inputs.mod-repos }}
+        _MODREPO_BUILDER_DEBUG: ${{ inputs.debug-output }}
       run: |
         set -euo pipefail
         git config user.name  "github-actions[bot]"
