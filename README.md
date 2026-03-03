@@ -32,6 +32,23 @@ jobs:
         uses: StationeersLaunchPad/modrepo-builder-action@v1
 ```
 
+## Troubleshooting
+
+- **No `modrepo.xml` changes committed**  
+  Means generated output is unchanged; action exits successfully.
+
+- **Release skipped**  
+  A release is skipped if it has no `.zip` assets.
+
+- **Asset skipped**  
+  A `.zip` is skipped if:
+  - it has no digest metadata in the GitHub release API response, or
+  - `About/About.xml` is missing, or
+  - required fields (`ModID`, `Version`, `Name`, `Author`) are missing/invalid.
+
+- **Push failed**  
+  Ensure workflow has `contents: write` permission and branch protections allow this workflow to update `modrepo`.
+
 ## Advanced Information
 
 ### What this action does
@@ -147,20 +164,3 @@ So in normal action usage:
   </Tags>
 </ModMetadata>
 ```
-
-## Troubleshooting
-
-- **No `modrepo.xml` changes committed**  
-  Means generated output is unchanged; action exits successfully.
-
-- **Release skipped**  
-  A release is skipped if it has no `.zip` assets.
-
-- **Asset skipped**  
-  A `.zip` is skipped if:
-  - it has no digest metadata in the GitHub release API response, or
-  - `About/About.xml` is missing, or
-  - required fields (`ModID`, `Version`, `Name`, `Author`) are missing/invalid.
-
-- **Push failed**  
-  Ensure workflow has `contents: write` permission and branch protections allow this workflow to update `modrepo`.
