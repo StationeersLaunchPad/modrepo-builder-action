@@ -16,6 +16,8 @@ https://github.com/<your_username>/<repo_name>/blob/modrepo/modrepo.xml
 ```
 
 ```yaml
+# GitHub Workflow
+# .github/workflows/build-modrepo.yml
 name: Build modrepo
 
 on:
