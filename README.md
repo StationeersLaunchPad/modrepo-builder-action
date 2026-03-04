@@ -9,10 +9,10 @@ This is for Stationeers mod authors who want to release their mods on GitHub.
 Put the yaml code below into a workflow file in your github repository (`.github/workflows/build-modrepo.yml`).
 After that, every time you create or update a GitHub release, the action will build and publish a `modrepo.xml` for your mod on the `modrepo` branch.
 
-Anyone who wants to install your mod can add this to their Stationeers Launchpad repository list:
-
+Anyone who wants to install your mod can add the github repo to their Stationeers Launchpad repository list, and install by ModID:
 ```
-https://github.com/<your_username>/<repo_name>/blob/modrepo/modrepo.xml
+slp repos add github.com/<your_username>/<repo_name>
+slp repomods add <ModID>
 ```
 
 ```yaml
